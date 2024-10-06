@@ -8,6 +8,10 @@ class Portfolio(models.Model):
     description = models.TextField(blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.name} ({self.user_id.username})"
+
 
 class Share(models.Model):
     symbol = models.CharField(max_length=10)
@@ -16,6 +20,10 @@ class Share(models.Model):
     current_price = models.DecimalField(max_digits=14, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now=True)
     last_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.symbol})"
+
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
@@ -33,8 +41,16 @@ class Transaction(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.transaction_type} {self.quatity} shares of {self.share_id.symbol} in {self.portfolio_id.name}"
+
+
 class PortfolioShare (models.Model):
     portfolio_id = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     share_id = models.ForeignKey(Share, on_delete=models.CASCADE)
     number_share = models.IntegerField()
     amount = models.DecimalField(max_digits=14, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.number_share} shares of {self.share_id.symbol} in {self.portfolio_id.name}"
+    
