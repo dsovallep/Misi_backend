@@ -37,8 +37,10 @@ class Transaction(models.Model):
     price_per_share = models.DecimalField(max_digits=14, decimal_places=2)
     total_share_price = models.DecimalField(max_digits=14, decimal_places=2)
     fees = models.DecimalField(max_digits=14, decimal_places=2)
+    total_transaction = models.DecimalField(max_digits=14, decimal_places=2, default=0.00)
     transaction_date = models.DateField()
-    notes = models.TextField(blank=True)
+    orden_number = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
