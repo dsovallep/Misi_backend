@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from .models import Portfolio, Share, Transaction, PortfolioShare
 from .serializers import PortfolioSerializer, ShareSerializer, TransactionSerializer, PortfolioShareSerializer
 
@@ -16,8 +17,7 @@ class ShareViewSet(viewsets.ModelViewSet):
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
-
-
+    
 class PortfolioShareViewSet(viewsets.ModelViewSet):
     queryset = PortfolioShare.objects.all()
     serializer_class = PortfolioShareSerializer

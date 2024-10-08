@@ -18,6 +18,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = '__all__'
+        read_only_fields = ('total_transaction',)  # Make total_transaction read-only
 
 
 class PortfolioShareSerializer(serializers.ModelSerializer):
