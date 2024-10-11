@@ -123,7 +123,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# FIX LOCAL ZONE
+USE_TZ = True # Datetime storage in UTC format
+TIME_ZONE = 'America/Bogota' # Define local zone time
 
 USE_I18N = True
 
