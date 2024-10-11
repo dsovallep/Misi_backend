@@ -51,6 +51,9 @@ class Transaction(models.Model):
 
     def save(self, *args, **kwargs):
         try:
+            logger.debug(f'max_price_per_share: {self.max_price_per_share}')
+            logger.debug(f'total_shares_price: {self.total_shares_price}')
+            logger.debug(f'total_transaction: {self.total_transaction}')
             self.total_transaction = self.total_shares_price + self.fees
             # Call the original save method to preseve normal behavior
             super(Transaction, self).save(*args, **kwargs)
@@ -106,9 +109,12 @@ class Transaction(models.Model):
 
             # Update the number of shares and adjust the amount
             portfolio_share.number_share -= self.quantity
-            
+             
             #Calculate profit or loss on the sale
-            portfolio_share.profit_loss = self.total_shares_price - portfolio_share.profit_loss
+            if self.total_shares_price <= portfolio_share.profit_loss:
+                portfolio_share.profit_loss = portfolio_share.profit_loss - self.total_shares_price
+            else:
+                portfolio_share.profit_loss = self.total_shares_price - portfolio_share.profit_loss
             
             # The amount remains the same (don't update the average price on a sell)
             if portfolio_share.number_share == 0:
