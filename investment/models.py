@@ -1,22 +1,34 @@
 import logging
 from decimal import Decimal
-from django.db import models
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db import models
 
 
 logger = logging.getLogger(__name__)
 
 
 class Portfolio(models.Model):
+    """
+    Represents a user's investment portfolio.
+
+    Attributes:
+        user_id: Foreign key to the User model.
+        name: Name of the portfolio.
+        description: Optional text field to describe the portfolio.
+        created_at: Timestamp when the portfolio was created.
+        updated_at: Timestamp when the portfolio was last updated.
+    """
+
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.name} ({self.user_id.username})"
+        return f"{self.name} ({str(self.user_id.username)})"
 
 
 class Share(models.Model):
@@ -24,7 +36,7 @@ class Share(models.Model):
     name = models.CharField(max_length=100)
     exchange = models.CharField(max_length=50, default='Unknown')
     current_price = models.DecimalField(max_digits=14, decimal_places=2, default=0.00)
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -32,10 +44,17 @@ class Share(models.Model):
 
 
 class Transaction(models.Model):
+    """                                                                                                 Represents a user's investment Transaction.
+    
+    Attributes:
+        
+    """
+
     TRANSACTION_TYPES = [
         ('BUY', 'Buy'),
         ('SELL', 'Sell'),
     ]
+
     portfolio_id = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     share_id = models.ForeignKey(Share, on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=4, choices=TRANSACTION_TYPES)
@@ -47,37 +66,62 @@ class Transaction(models.Model):
     transaction_date = models.DateField()
     orden_number = models.IntegerField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        """
+        Overrides the save method to calculate the total transaction amount.
+
+        Logs relevant transaction details and updates the portfolio-share relationship.
+        """
+        
         try:
-            logger.debug(f'max_price_per_share: {self.max_price_per_share}')
-            logger.debug(f'total_shares_price: {self.total_shares_price}')
-            logger.debug(f'total_transaction: {self.total_transaction}')
             self.total_transaction = self.total_shares_price + self.fees
-            # Call the original save method to preseve normal behavior
             super(Transaction, self).save(*args, **kwargs)
             self.update_portfolio_share()
         
+        except ValidationError as e:
+            logger.error(f"Validation error: {e}")
+            raise
         except Exception as e:
-            raise ValidationError(f'Exception: {e}')
-
+            ValidationError(f'Unexpected error: {e}')
+            raise 
+    
+    @staticmethod
+    def create_portfolio_share_history(portfolio_share, transaction_type, number_share, total_shares_price, amount, average_price_per_share, profit_loss, total_in_fees):
+        """
+        Create a object of PortfolioShareHistory.
+        """ 
+        
+        PortfolioShareHistory.objects.create(
+        portfolio_share=portfolio_share,
+        transaction_type=transaction_type,
+        number_share=number_share,
+        total_shares_price = total_shares_price,
+        amount=amount,
+        average_price_per_share=average_price_per_share,
+        profit_loss=profit_loss,
+        total_in_fees=total_in_fees
+        )
+    
     def update_portfolio_share(self):
-        # Fetch the PortfolioShare for the given portfolio and share, or create a new one
-        # if it doesn't exist
+        """
+        Update the portfolio share based on the transaction.
+        """
+    
         portfolio_share, created = PortfolioShare.objects.get_or_create(
                 portfolio_id=self.portfolio_id, share_id=self.share_id
         ) 
 
-        # Store the current state before updating
-        PortfolioShareHistory.objects.create(portfolio_share=portfolio_share,
-        transaction_type=portfolio_share.last_transaction_type,
-        number_share=portfolio_share.number_share,
-        total_shares_price = portfolio_share.total_shares_price,
-        amount=portfolio_share.amount,
-        average_price_per_share=portfolio_share.average_price_per_share,
-        profit_loss=portfolio_share.profit_loss,
-        total_in_fees=portfolio_share.total_in_fees
+        # Store the current state in the model PortfolioShareHistory before updating
+        self.create_portfolio_share_history(portfolio_share,
+        portfolio_share.last_transaction_type,
+        portfolio_share.number_share,
+        portfolio_share.total_shares_price,
+        portfolio_share.amount,
+        portfolio_share.average_price_per_share,
+        portfolio_share.profit_loss,
+        portfolio_share.total_in_fees
         )
 
         if self.transaction_type == 'BUY':
@@ -127,38 +171,41 @@ class Transaction(models.Model):
                 portfolio_share.amount -= self.total_shares_price
         
         portfolio_share.total_in_fees += self.fees
-        # Save the updated PortfolioShare
         portfolio_share.save()
         
-        PortfolioShareHistory.objects.create(
-        portfolio_share=portfolio_share,
-        transaction_type=self.transaction_type,
-        number_share=portfolio_share.number_share,
-        total_shares_price = self.total_shares_price,
-        amount=portfolio_share.amount,
-        average_price_per_share=portfolio_share.average_price_per_share,
-        profit_loss=portfolio_share.profit_loss,
-        total_in_fees=portfolio_share.total_in_fees
+        self.create_portfolio_share_history(
+        portfolio_share,
+        portfolio_share.last_transaction_type,
+        portfolio_share.number_share,
+        portfolio_share.total_shares_price,
+        portfolio_share.amount,
+        portfolio_share.average_price_per_share,
+        portfolio_share.profit_loss,
+        portfolio_share.total_in_fees
         )
 
-        logger.debug("Portfolio share updated successfully.")
 
     def __str__(self):
         return f"{self.transaction_type} {self.quantity} shares of {self.share_id.symbol} in {self.portfolio_id.name}"
 
 
 class PortfolioShare (models.Model):
+    """
+    Represent the current state of a share in a portfolio.
+    """
+
     TRANSACTION_TYPES = [
         ('BUY', 'Buy'),
         ('SELL', 'Sell'),
     ]
+    
     portfolio_id = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
     share_id = models.ForeignKey(Share, on_delete=models.CASCADE)
     last_transaction_type = models.CharField(choices=TRANSACTION_TYPES, max_length=4, default='BUY')
-    number_share = models.IntegerField(default=0) # Total number of shares held
+    number_share = models.IntegerField(default=0) 
     total_shares_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal(0.00))
-    amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal(0.00)) # Total amount invested
-    average_price_per_share = models.DecimalField(max_digits=14, decimal_places=2, default=0.00) # Average cost per share
+    amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal(0.00)) 
+    average_price_per_share = models.DecimalField(max_digits=14, decimal_places=2, default=0.00)
     profit_loss = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, default=Decimal(0.00))
     total_in_fees = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, default=Decimal(0.00))
     last_updated = models.DateTimeField(auto_now=True)
@@ -168,10 +215,15 @@ class PortfolioShare (models.Model):
 
 
 class PortfolioShareHistory(models.Model):
+    """
+    Represent the history of changes to a portfolio share.
+    """
+
     TRANSACTION_TYPES = [
         ('BUY', 'Buy'),
         ('SELL', 'Sell'),
     ]
+
     portfolio_share = models.ForeignKey(PortfolioShare, on_delete=models.CASCADE)
     transaction_type = models.CharField(choices=TRANSACTION_TYPES, max_length=4, default='BUY')
     number_share = models.IntegerField()
