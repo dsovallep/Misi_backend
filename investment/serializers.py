@@ -15,10 +15,12 @@ class ShareSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    share_name = serializers.CharField(source='share_id.name', read_only=True)
+
     class Meta:
         model = Transaction
-        fields = ['id', 'portfolio_id', 'share_id', 'transaction_type', 'quantity', 'max_price_per_share', 'total_shares_price', 'fees', 'total_transaction', 'transaction_date', 'orden_number']
-        read_only_fields = ('total_transaction', ) 
+        fields = ['id', 'portfolio_id', 'share_id', 'share_name', 'transaction_type', 'quantity', 'max_price_per_share', 'total_shares_price', 'fees', 'total_transaction', 'transaction_date', 'orden_number', 'created_at']
+        read_only_fields = ('total_transaction', 'created_at', 'share_name', ) 
     
 
 class PortfolioShareSerializer(serializers.ModelSerializer):
