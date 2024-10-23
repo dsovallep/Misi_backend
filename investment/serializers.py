@@ -11,7 +11,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
 class ShareSerializer(serializers.ModelSerializer):
     class Meta:
         model = Share
-        fields = '__all__'
+        fields = ['id', 'symbol', 'name', 'exchange', 'current_price']
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -25,9 +25,11 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 class PortfolioShareSerializer(serializers.ModelSerializer):
     share_name = serializers.CharField(source='share_id.name', read_only=True)
+    share_symbol = serializers.CharField(source='share_id.symbol', read_only=True)
+
     class Meta:
         model = PortfolioShare
-        fields = ['id', 'share_name', 'number_share', 'amount', 'average_price_per_share', 'profit_loss', 'total_in_fees']
+        fields = ['id', 'share_symbol', 'share_name', 'number_share', 'amount', 'average_price_per_share', 'profit_loss', 'total_in_fees']
 
 
 class  PortfolioShareHistorySerializer(serializers.ModelSerializer):
